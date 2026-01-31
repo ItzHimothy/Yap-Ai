@@ -1,13 +1,14 @@
 require("dotenv").config();
+
 const { Client, GatewayIntentBits } = require("discord.js");
 const OpenAI = require("openai");
 
 /* ================= CONFIG ================= */
 
 const PREFIX = "!ask";
-const ALLOWED_GUILD_ID = "1465718425765679135";
+const ALLOWED_GUILD_ID = "1465718425765679135"; // YOUR SERVER ID
 
-/* ========================================== */
+/* ========================================= */
 
 const client = new Client({
   intents: [
@@ -17,23 +18,14 @@ const client = new Client({
   ]
 });
 
-/* ================= OPENAI ================= */
-
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
 /* ================= READY ================= */
 
-client.once("ready", async () => {
+client.once("ready", () => {
   console.log(`🤖 YapAI logged in as ${client.user.tag}`);
-
-  // Lock bot to your server
-  for (const guild of client.guilds.cache.values()) {
-    if (guild.id !== ALLOWED_GUILD_ID) {
-      await guild.leave().catch(() => {});
-    }
-  }
 });
 
 /* ================= MESSAGE HANDLER ================= */
@@ -48,7 +40,7 @@ client.on("messageCreate", async (message) => {
 
     const question = message.content.slice(PREFIX.length).trim();
     if (!question) {
-      return message.reply("❌ Ask me something.\nExample: `!ask Can you help me build a website?`");
+      return message.reply("❌ Ask me something.\nExample: `!ask how much is a website?`");
     }
 
     await message.channel.sendTyping();
@@ -60,8 +52,8 @@ client.on("messageCreate", async (message) => {
           role: "system",
           content:
             "You are YapAI, a friendly AI assistant for the Yap Sites Discord server. " +
-            "You help users with websites, Discord bots, pricing, ideas, and general support. " +
-            "You are professional, helpful, and clear."
+            "You help users with websites, Discord bots, pricing, ideas, and support. " +
+            "Be clear, professional, and helpful."
         },
         {
           role: "user",
@@ -69,15 +61,20 @@ client.on("messageCreate", async (message) => {
         }
       ],
       temperature: 0.6,
-      max_tokens: 400
+      max_tokens: 500
     });
 
-    const reply = completion.choices[0].message.content;
+    let reply = completion.choices[0].message.content;
 
-    await message.reply(reply.length > 1900 ? reply.slice(0, 1900) + "…" : reply);
+    // Discord safety limit
+    if (reply.length > 1900) {
+      reply = reply.slice(0, 1900) + "...";
+    }
+
+    await message.reply(reply);
 
   } catch (err) {
-    console.error("AI Error:", err);
+    console.error("AI ERROR:", err);
     message.reply("⚠️ I had trouble answering that. Try again.");
   }
 });
